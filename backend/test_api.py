@@ -18,29 +18,37 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def genData(data):
+    """Converts input text into a list of 8-bit binary strings."""
     return [format(ord(i), '08b') for i in data]
 
 def modPix(pix, data):
+    """Modifies pixel values to encode the binary data."""
     datalist = genData(data)
     lendata = len(datalist)
     imdata = iter(pix)
     
     for i in range(lendata):
         pixels = [value for value in next(imdata)[:3] + next(imdata)[:3] + next(imdata)[:3]]
+        
+        # Modify pixel values based on binary data
         for j in range(8):
             if datalist[i][j] == '0' and pixels[j] % 2 != 0:
                 pixels[j] -= 1
             elif datalist[i][j] == '1' and pixels[j] % 2 == 0:
                 pixels[j] = pixels[j] - 1 if pixels[j] != 0 else pixels[j] + 1
+        
+        # Set termination flag (last pixel even means continue, odd means stop)
         if i == lendata - 1:
-            pixels[-1] |= 1
+            pixels[-1] |= 1  # Make odd (stop flag)
         else:
-            pixels[-1] &= ~1
+            pixels[-1] &= ~1  # Make even (continue flag)
+        
         yield tuple(pixels[:3])
         yield tuple(pixels[3:6])
         yield tuple(pixels[6:9])
 
 def encode_enc(newimg, data):
+    """Encodes the modified pixel data into the new image."""
     w = newimg.size[0]
     (x, y) = (0, 0)
     
@@ -49,7 +57,25 @@ def encode_enc(newimg, data):
         x = 0 if x == w - 1 else x + 1
         y += 1 if x == 0 else 0
 
-def decode_image_data(image):
+@app.post("/encode")
+async def encode():
+    """Handles user input and calls encoding functions."""
+    img = input("Enter image name (with extension): ")
+    image = Image.open(img, 'r')
+    data = input("Enter data to be encoded: ")
+    
+    if not data:
+        raise ValueError("Data is empty")
+    
+    newimg = image.copy()
+    encode_enc(newimg, data)
+    new_img_name = input("Enter the name of new image (with extension): ")
+    newimg.save(new_img_name, new_img_name.split(".")[-1].upper())
+
+def decode():
+    """Decodes hidden text from an image."""
+    img = input("Enter image name (with extension): ")
+    image = Image.open(img, 'r')
     imgdata = iter(image.getdata())
     data = ""
     
@@ -57,41 +83,21 @@ def decode_image_data(image):
         pixels = [value for value in next(imgdata)[:3] + next(imgdata)[:3] + next(imgdata)[:3]]
         binstr = ''.join(['1' if i % 2 else '0' for i in pixels[:8]])
         data += chr(int(binstr, 2))
+        
         if pixels[-1] % 2 != 0:
             break
+    
     return data
 
-@app.post("/encode")
-async def encode(message: str = Form(...), image: UploadFile = Form(...)):
-    input_path = os.path.join(UPLOAD_FOLDER, image.filename)
-    output_path = os.path.join(UPLOAD_FOLDER, "stego_" + image.filename)
+def main():
+    """Main function for user interaction."""
+    choice = input(":: Welcome to Steganography ::\n1. Encode\n2. Decode\n")
+    if choice == '1':
+        encode()
+    elif choice == '2':
+        print("Decoded Word: " + decode())
+    else:
+        print("Invalid choice, exiting.")
 
-    # to odpre sliko iz requesta kot file
-    with open(input_path, "wb") as f:
-        shutil.copyfileobj(image.file, f)
-
-    # odpre kot sliko
-    image = Image.open(input_path, 'r')
-    new_image = image.copy()
-    encode_enc(new_image, message)
-    print(message, input_path, output_path, image.filename)
-    new_image.save(output_path)
-
-    return FileResponse(path=output_path, filename="stego_image.png", media_type="image/png")
-
-@app.post("/decode")
-async def decode(image: UploadFile = Form(...)):
-    input_path = os.path.join(UPLOAD_FOLDER, "decode_" + image.filename)
-
-    with open(input_path, "wb") as f2:
-        shutil.copyfileobj(image.file, f2)
-
-    new_image = Image.open(input_path, 'r')
-    hidden_message = decode_image_data(new_image)
-
-    # oth_msg = None
-    # othimg = Image.open("uploads/stego_orig.png", 'r')
-    # oth_msg = decode_image_data(othimg)
-
-    return JSONResponse({"message": hidden_message})
-    # return JSONResponse({"message": f"{hidden_message} + {oth_msg}"})
+if __name__ == "__main__":
+    main()
