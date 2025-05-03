@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import './App.css';
 
+// const PORTS = ['8080', '8080'];
+// const HOSTS = ['localhost', '127.0.0.1', '127.19.0.2'];
+
 function App() {
     const [coverImage, setCoverImage] = useState(null);
     const [coverPreview, setCoverPreview] = useState('');
@@ -8,6 +11,10 @@ function App() {
     const [stegoImage, setStegoImage] = useState(null);
     const [downloadUrl, setDownloadUrl] = useState('');
     const [decodedMessage, setDecodedMessage] = useState('');
+
+    const [port, setPort] = useState('8000');
+    const [host, setHost] = useState('localhost');
+
 
     const handleCoverChange = (e) => {
         const file = e.target.files[0];
@@ -24,8 +31,9 @@ function App() {
         const formData = new FormData();
         formData.append('image', coverImage);
         formData.append('message', message);
+        const url_send = `http://${host}:${port}/encode`;
 
-        const res = await fetch('http://localhost:8000/encode', {
+        const res = await fetch(url_send, {
             method: 'POST',
             body: formData,
         });
@@ -38,8 +46,9 @@ function App() {
     const handleDecode = async () => {
         const formData = new FormData();
         formData.append('image', stegoImage);
+        const url = `http://${host}:${port}/decode`;
 
-        const res = await fetch('http://localhost:8000/decode', {
+        const res = await fetch(url, {
             method: 'POST',
             body: formData,
         });

@@ -95,3 +95,7 @@ async def decode(image: UploadFile = Form(...)):
 
     return JSONResponse({"message": hidden_message})
     # return JSONResponse({"message": f"{hidden_message} + {oth_msg}"})
+
+@app.get("/")
+async def version():
+    return JSONResponse({"everything": "ok"})
