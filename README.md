@@ -10,7 +10,7 @@ docker-compose up --build
 BACKEND
 cd ./backend
 pip install --no-cache-dir -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --port 8000
 
 FRONTEND
 cd ./frontend
